@@ -5,8 +5,10 @@ import pytest
 from bnf_p0.deploy import apply_profile, git_blob_sha, rollback, verify_profile
 
 
-def profile_for(path: str, expected: str, source: str, *, vendor_core=False, action="replace", patches=None):
-    item = {"path": path, "expected_blob_sha": expected, "action": action}
+def profile_for(path: str, expected: str | None, source: str, *, vendor_core=False, action="replace", patches=None):
+    item = {"path": path, "action": action}
+    if expected is not None:
+        item["expected_blob_sha"] = expected
     if source:
         item["source"] = source
     if patches:
@@ -32,6 +34,36 @@ def test_replace_verify_and_rollback(tmp_path):
     rollback(target)
     assert (target / "a.py").read_bytes() == old
     assert not (target / ".bnf-p0-state.json").exists()
+
+
+def test_create_verify_and_rollback_removes_created_file(tmp_path):
+    package = tmp_path / "package"
+    target = tmp_path / "target"
+    (package / "repl").mkdir(parents=True)
+    target.mkdir()
+    (package / "repl/helper.R").write_text("helper <- TRUE\n")
+    profile = profile_for("helper.R", None, "repl/helper.R", action="create")
+
+    apply_profile(target, profile, package)
+    assert (target / "helper.R").read_text() == "helper <- TRUE\n"
+    ok, _, problems = verify_profile(target, profile, package)
+    assert ok and not problems
+
+    rollback(target)
+    assert not (target / "helper.R").exists()
+
+
+def test_create_refuses_collision_without_force(tmp_path):
+    package = tmp_path / "package"
+    target = tmp_path / "target"
+    (package / "repl").mkdir(parents=True)
+    target.mkdir()
+    (package / "repl/helper.R").write_text("managed <- TRUE\n")
+    (target / "helper.R").write_text("user <- TRUE\n")
+    profile = profile_for("helper.R", None, "repl/helper.R", action="create")
+
+    with pytest.raises(RuntimeError, match="état amont inattendu"):
+        apply_profile(target, profile, package)
 
 
 def test_drift_refuses_without_force(tmp_path):
