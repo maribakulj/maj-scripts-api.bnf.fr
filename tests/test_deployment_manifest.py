@@ -1,6 +1,6 @@
 import json
 import runpy
-import tomllib
+from importlib.metadata import version
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -8,8 +8,7 @@ ROOT = Path(__file__).parents[1]
 
 def test_manifest_sources_exist_and_profiles_are_complete():
     manifest = json.loads((ROOT / "deployment/upstream_manifest.json").read_text())
-    project = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    assert manifest["package_version"] == project["project"]["version"]
+    assert manifest["package_version"] == version("bnf-api-p0")
     assert set(manifest["profiles"]) == {"pygallica", "pyllica", "gallipy", "gargallica", "bnfimage"}
     for profile in manifest["profiles"].values():
         for item in profile["files"]:
