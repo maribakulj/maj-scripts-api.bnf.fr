@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "package_version": "0.1.3",
+  "package_version": "0.2.0",
   "verified_date": "2026-09-02",
   "profiles": {
     "pygallica": {
@@ -42,7 +42,22 @@
       "default_branch": "master",
       "vendor_core": false,
       "files": [
-        {"path": "full_hd_image.R", "expected_blob_sha": "f85c2e69fbd3019af4bad35684b0064d38d429cb", "action": "replace", "source": "legacy_replacements/gargallica/full_hd_image.R"}
+        {"path": "full_hd_image.R", "expected_blob_sha": "f85c2e69fbd3019af4bad35684b0064d38d429cb", "action": "replace", "source": "legacy_replacements/gargallica/full_hd_image.R"},
+        {"path": "gallica_api.R", "action": "create", "source": "legacy_replacements/gargallica/gallica_api.R"},
+        {"path": "gallica.R", "expected_blob_sha": "7d071fabe85a588db73c6dbf8d0c9370fdbdbcf6", "action": "text_patch", "patches": [
+          {"old": "library(rvest)\n", "new": "library(rvest)\nsource(\"gallica_api.R\")\n"},
+          {"old": "page <- function(i)xml2::read_xml(paste0('http://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))", "new": "page <- function(i) gargallica_read_xml(paste0('https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))"},
+          {"old": "    read_html() %>%", "new": "    gargallica_read_html() %>%"}
+        ]}
+      ]
+    },
+    "bnfimage": {
+      "repository": "Rekyt/bnfimage",
+      "default_branch": "master",
+      "vendor_core": false,
+      "files": [
+        {"path": "R/utils.R", "expected_blob_sha": "95e9aa50dbd0eb4af15a1a9f522eff6c821d5bc9", "action": "replace", "source": "legacy_replacements/bnfimage/R/utils.R"},
+        {"path": "R/bi_image.R", "expected_blob_sha": "2094a4bf09f210590a75ad617b51d784f42767fb", "action": "replace", "source": "legacy_replacements/bnfimage/R/bi_image.R"}
       ]
     }
   }
