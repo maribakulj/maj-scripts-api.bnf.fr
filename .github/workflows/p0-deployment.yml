@@ -3,7 +3,9 @@ name: P0 legacy deployment validation
 on:
   push:
     branches:
+      - main
       - 'p0/**'
+      - 'p1/**'
   pull_request:
   workflow_dispatch:
   schedule:
@@ -26,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e . pytest
       - name: Test safe apply verify rollback cycle
-        run: pytest -q tests/test_deploy.py tests/test_deployment_manifest.py
+        run: pytest -q tests/test_deploy.py tests/test_deployment_manifest.py tests/test_r_replacements.py
       - name: Validate audited upstream Git blob SHAs
         env:
           GITHUB_TOKEN: ${{ github.token }}
