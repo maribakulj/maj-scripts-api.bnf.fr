@@ -1,0 +1,8 @@
+{
+  "timestamp_utc": "2026-09-02T12:23:10.209550+00:00",
+  "host": "gallica.bnf.fr",
+  "dns": {"ok": true, "addresses": ["194.199.8.11"]},
+  "tls": {"ok": true, "protocol": "TLSv1.3", "cipher": "TLS_AES_128_GCM_SHA256", "not_after": "Nov 29 23:59:59 2026 GMT"},
+  "ok": true,
+  "provenance": {"github_actions_run_id": 33629602190, "network_context": "GitHub-hosted ubuntu-latest runner; external to BnF"}
+}

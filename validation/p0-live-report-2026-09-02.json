@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "package_version": "0.1.3",
+  "timestamp_utc": "2026-09-02T12:23:13.226028+00:00",
+  "python": "3.12.14",
+  "network": {
+    "timestamp_utc": "2026-09-02T12:23:11.123413+00:00",
+    "host": "gallica.bnf.fr",
+    "dns": {"ok": true, "addresses": ["194.199.8.11"]},
+    "tls": {"ok": true, "protocol": "TLSv1.3", "cipher": "TLS_AES_128_GCM_SHA256", "not_after": "Nov 29 23:59:59 2026 GMT"},
+    "ok": true
+  },
+  "checks": [
+    {"name": "Pagination", "ok": true, "elapsed_s": 0.907, "detail": {"views": 374}},
+    {"name": "OAIRecord", "ok": true, "elapsed_s": 0.202, "detail": {"root_keys": ["results"]}},
+    {"name": "Issues", "ok": true, "elapsed_s": 7.72, "detail": {"resolved": "bpt6k5509212w"}},
+    {"name": "SRU", "ok": true, "elapsed_s": 2.698, "detail": {"root_keys": ["searchRetrieveResponse"]}},
+    {"name": "ALTO", "ok": true, "elapsed_s": 0.502, "detail": {"bytes": 6102}},
+    {"name": "IIIF info", "ok": true, "elapsed_s": 0.726, "detail": {"width": 10784}}
+  ],
+  "ok": true,
+  "status": "PASS",
+  "provenance": {
+    "github_actions_run_id": 33629602190,
+    "head_sha": "fe5e97d290cbe17f1390ab685f61db3e7aea2632",
+    "network_context": "GitHub-hosted ubuntu-latest runner; external to BnF"
+  }
+}
