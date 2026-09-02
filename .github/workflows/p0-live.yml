@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'p0/**'
+      - 'p1/**'
   pull_request:
   workflow_dispatch:
   schedule:
