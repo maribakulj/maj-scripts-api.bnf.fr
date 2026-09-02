@@ -1,0 +1,66 @@
+name: P0 public Gallica validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'p0/**'
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  live-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Compile sources
+        run: python -m compileall -q src scripts
+
+      - name: Diagnose public Gallica network access
+        run: python scripts/network_diagnose.py --output network-report.json
+
+      - name: Validate public Gallica APIs
+        if: success()
+        run: python scripts/live_validate.py --output p0-live-report.json
+
+      - name: Publish validation report in job summary
+        if: always()
+        shell: bash
+        run: |
+          echo '## P0 Gallica live validation' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f p0-live-report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat p0-live-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f network-report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat network-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-live-validation-${{ github.run_id }}
+          path: |
+            network-report.json
+            p0-live-report.json
+          if-no-files-found: warn
