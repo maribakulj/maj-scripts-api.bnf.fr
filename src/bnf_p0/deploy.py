@@ -51,7 +51,11 @@ def _is_already_applied(target: Path, item: dict[str, Any], package_root: Path) 
         return target.read_bytes() == _replacement_bytes(package_root, item)
     if item["action"] == "text_patch":
         text = target.read_text(encoding="utf-8")
-        return all(p["new"] in text and p["old"] not in text for p in item["patches"])
+        # A replacement may legitimately contain the original substring
+        # (for example inserting a new source() line after library(rvest)).
+        # Presence of every replacement is therefore the stable/idempotent
+        # criterion; requiring every old fragment to disappear is incorrect.
+        return all(p["new"] in text for p in item["patches"])
     raise ValueError(f"Action inconnue: {item['action']}")
 
 
@@ -175,9 +179,9 @@ def apply_profile(target_root: str | Path, profile: dict[str, Any], package_root
             text = target.read_text(encoding="utf-8")
             for patch in item["patches"]:
                 old, new = patch["old"], patch["new"]
+                if new in text:
+                    continue
                 if old not in text:
-                    if new in text:
-                        continue
                     raise RuntimeError(f"Motif de patch introuvable dans {item['path']}: {old}")
                 text = text.replace(old, new, 1)
             target.write_text(text, encoding="utf-8")
