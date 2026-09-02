@@ -47,7 +47,7 @@ def _replacement_bytes(package_root: Path, item: dict[str, Any]) -> bytes:
 def _is_already_applied(target: Path, item: dict[str, Any], package_root: Path) -> bool:
     if not target.exists():
         return False
-    if item["action"] == "replace":
+    if item["action"] in {"replace", "create"}:
         return target.read_bytes() == _replacement_bytes(package_root, item)
     if item["action"] == "text_patch":
         text = target.read_text(encoding="utf-8")
@@ -62,15 +62,22 @@ def inspect_profile(target_root: str | Path, profile: dict[str, Any], package_ro
     for item in profile["files"]:
         target = root / item["path"]
         expected = item.get("expected_blob_sha")
+        action = item["action"]
         if not target.exists():
-            result.append(FileStatus(item["path"], "MISSING", None, expected, "fichier amont absent"))
+            if action == "create":
+                result.append(FileStatus(item["path"], "EXPECTED_ABSENT", None, expected, "fichier à créer"))
+            else:
+                result.append(FileStatus(item["path"], "MISSING", None, expected, "fichier amont absent"))
             continue
         if _is_already_applied(target, item, pkg):
             result.append(FileStatus(item["path"], "ALREADY_APPLIED", git_blob_sha(target.read_bytes()), expected))
             continue
         data = target.read_bytes()
         actual = git_blob_sha(data)
-        if expected and expected in accepted_blob_shas(data):
+        if action == "create":
+            status = "DRIFT"
+            detail = "un fichier non géré existe déjà à l'emplacement à créer"
+        elif expected and expected in accepted_blob_shas(data):
             status = "EXPECTED"
             detail = "SHA amont conforme"
         else:
@@ -162,7 +169,7 @@ def apply_profile(target_root: str | Path, profile: dict[str, Any], package_root
             continue
         existed = _backup_existing(root, item["path"], backup_dir)
         target.parent.mkdir(parents=True, exist_ok=True)
-        if item["action"] == "replace":
+        if item["action"] in {"replace", "create"}:
             target.write_bytes(_replacement_bytes(pkg, item))
         elif item["action"] == "text_patch":
             text = target.read_text(encoding="utf-8")
