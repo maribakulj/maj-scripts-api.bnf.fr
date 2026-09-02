@@ -1,0 +1,49 @@
+{
+  "verified_date": "2026-09-02",
+  "policy": "A GitHub repository that is not archived is not automatically considered maintained. The status below describes only facts verified during this audit and the editorial treatment recommended for api.bnf.fr.",
+  "wrappers": [
+    {
+      "name": "PyGallica",
+      "repository": "ian-nai/PyGallica",
+      "github_archived": true,
+      "editorial_status": "historical",
+      "recommendation": "Keep only with an explicit historical/archived warning and point existing users to the tested compatibility layer."
+    },
+    {
+      "name": "Gallipy",
+      "repository": "GeoHistoricalData/gallipy",
+      "github_archived": false,
+      "editorial_status": "third-party-audited",
+      "recommendation": "Do not infer active maintenance from the non-archived flag. Mention the 2026 compatibility fixes for async IIIF and PDF reconstruction."
+    },
+    {
+      "name": "fdh-gallica",
+      "repository": null,
+      "historical_url": "https://fdh.epfl.ch/index.php/Gallica_wrapper",
+      "github_archived": null,
+      "editorial_status": "unverified-link",
+      "recommendation": "Do not present as a current recommended wrapper until the historical EPFL link and project location are verified."
+    },
+    {
+      "name": "Pyllica",
+      "repository": "Dorialexander/Pyllica",
+      "github_archived": false,
+      "editorial_status": "third-party-audited",
+      "recommendation": "Keep the conceptual documentation but replace transport/download examples with quota-aware, Issues-based implementations."
+    },
+    {
+      "name": "bnfimage",
+      "repository": "Rekyt/bnfimage",
+      "github_archived": false,
+      "editorial_status": "third-party-audited",
+      "recommendation": "Document the 2026 quota/429 compatibility patch; do not imply institutional BnF support."
+    },
+    {
+      "name": "gargallica",
+      "repository": "GuillaumePressiat/gargallica",
+      "github_archived": false,
+      "editorial_status": "third-party-audited",
+      "recommendation": "Document the HTTPS and .texteBrut rate-limit compatibility patch; do not imply institutional BnF support."
+    }
+  ]
+}
