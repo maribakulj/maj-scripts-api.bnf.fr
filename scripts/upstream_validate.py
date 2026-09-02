@@ -22,7 +22,7 @@ DEFAULT_OUTPUT = ROOT / "validation" / "upstream-sha-report.json"
 
 def main() -> int:
     manifest = load_manifest(MANIFEST)
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "bnf-api-p0-upstream-validator/0.1.3"}
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "bnf-api-upstream-validator/0.2.0"}
     token = os.getenv("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -33,14 +33,26 @@ def main() -> int:
             branch = profile.get("default_branch", "master")
             for item in profile["files"]:
                 path = item["path"]
-                expected = item["expected_blob_sha"]
+                action = item["action"]
+                expected = item.get("expected_blob_sha")
                 url = f"https://api.github.com/repos/{repo}/contents/{path}"
                 try:
                     response = client.get(url, params={"ref": branch})
-                    response.raise_for_status()
-                    actual = response.json().get("sha")
-                    status = "PASS" if actual == expected else "DRIFT"
-                    error = None
+                    if action == "create":
+                        if response.status_code == 404:
+                            actual = None
+                            status = "PASS_ABSENT"
+                            error = None
+                        else:
+                            response.raise_for_status()
+                            actual = response.json().get("sha")
+                            status = "COLLISION"
+                            error = "file expected to be absent upstream already exists"
+                    else:
+                        response.raise_for_status()
+                        actual = response.json().get("sha")
+                        status = "PASS" if actual == expected else "DRIFT"
+                        error = None
                 except Exception as exc:
                     actual = None
                     status = "ERROR"
@@ -49,12 +61,14 @@ def main() -> int:
                     "profile": profile_name,
                     "repository": repo,
                     "path": path,
+                    "action": action,
                     "expected_blob_sha": expected,
                     "actual_blob_sha": actual,
                     "status": status,
                     "error": error,
                 })
-    overall = "PASS" if rows and all(r["status"] == "PASS" for r in rows) else "FAIL"
+    accepted = {"PASS", "PASS_ABSENT"}
+    overall = "PASS" if rows and all(r["status"] in accepted for r in rows) else "FAIL"
     report = {
         "checked_at_utc": datetime.now(timezone.utc).isoformat(),
         "manifest_version": manifest["package_version"],
