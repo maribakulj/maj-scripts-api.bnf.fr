@@ -4,7 +4,7 @@ Dépôt de travail canonique pour l’audit, la remédiation et la validation de
 
 ## P0
 
-La branche `p0/integration-0.1.3` contient :
+Le P0, désormais fusionné dans `main`, apporte :
 
 - le client Gallica robuste ;
 - les correctifs de compatibilité PyGallica et Pyllica ;
@@ -16,15 +16,42 @@ La branche `p0/integration-0.1.3` contient :
 - la validation des Git blob SHA des fichiers tiers audités ;
 - les rapports de validation sous `validation/`.
 
-## CI P0
+## P1 : maintenance et clients R
 
-La CI est séparée en trois workflows :
+La version `0.2.0` étend le chantier aux deux clients R encore fragiles.
 
-1. `P0 local regression suite` : tests déterministes sans dépendance au réseau, sur Python 3.10 et 3.12 ;
-2. `P0 public Gallica validation` : smoke tests contre les services publics Gallica depuis un runner GitHub externe ;
-3. `P0 legacy deployment validation` : simulation `apply → verify → rollback` et contrôle de dérive des fichiers amont.
+### bnfimage
 
-La fusion du P0 n’est recommandée que lorsque les trois workflows sont verts.
+Le remplacement P1 :
+
+- conserve l’interface historique de `bi_image()` ;
+- distingue les requêtes IIIF haute définition ;
+- applique une cadence conservatrice de 12,5 secondes pour les requêtes HD, soit moins de 5 appels/minute ;
+- respecte `Retry-After` sur HTTP 429 et utilise un backoff borné en secours ;
+- ajoute un timeout HTTP et remonte les autres erreurs HTTP au lieu de tenter de décoder leur corps comme une image.
+
+### gargallica
+
+Le remplacement P1 :
+
+- migre le SRU de HTTP vers HTTPS ;
+- centralise les appels Gallica dans `gallica_api.R` ;
+- limite les appels `.texteBrut` à une cadence conservatrice de 12,5 secondes ;
+- gère 429, 500, 502, 503 et 504 avec `Retry-After` / backoff ;
+- conserve le script d’analyse historique en le modifiant le moins possible.
+
+Le déployeur sait désormais créer un helper absent en amont avec l’action gérée `create`. Une collision est considérée comme une dérive et bloque l’application sans `--force`; le rollback supprime le fichier s’il avait été créé par le déployeur.
+
+## CI
+
+Quatre rails indépendants couvrent désormais le chantier :
+
+1. `P0 local regression suite` : Python 3.10 et 3.12 ;
+2. `P0 public Gallica validation` : smoke tests publics contre Gallica depuis GitHub ;
+3. `P0 legacy deployment validation` : `apply → verify → rollback` et contrôle des SHA amont ;
+4. `P1 R compatibility validation` : parsing réel des remplacements R et classification des requêtes IIIF HD.
+
+Les branches P0, P1 et `main` sont couvertes. Une fusion n’est recommandée que lorsque les quatre rails concernés sont verts sur la même tête de commit.
 
 ## Déploiement legacy
 
@@ -47,6 +74,18 @@ En cas de problème :
 python scripts/deploy_legacy.py rollback --target /chemin/PyGallica
 ```
 
-Profils disponibles : `pygallica`, `pyllica`, `gallipy`, `gargallica`.
+Pour les clients R :
+
+```bash
+python scripts/deploy_legacy.py plan --profile bnfimage --target /chemin/bnfimage
+python scripts/deploy_legacy.py apply --profile bnfimage --target /chemin/bnfimage
+python scripts/deploy_legacy.py verify --profile bnfimage --target /chemin/bnfimage
+
+python scripts/deploy_legacy.py plan --profile gargallica --target /chemin/gargallica
+python scripts/deploy_legacy.py apply --profile gargallica --target /chemin/gargallica
+python scripts/deploy_legacy.py verify --profile gargallica --target /chemin/gargallica
+```
+
+Profils disponibles : `pygallica`, `pyllica`, `gallipy`, `gargallica`, `bnfimage`.
 
 Le déployeur refuse par défaut un fichier dont le SHA ne correspond plus à la version auditée. `--force` ne doit être utilisé qu’après revue manuelle du diff.
