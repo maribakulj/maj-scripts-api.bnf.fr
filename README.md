@@ -2,9 +2,19 @@
 
 Dépôt de travail canonique pour l’audit, la remédiation et la validation des scripts et wrappers référencés par api.bnf.fr.
 
-## P0
+## État du chantier
 
-Le P0, désormais fusionné dans `main`, apporte :
+Les lots P0, P1 et P2 ont été fusionnés dans `main`.
+
+- **P0** corrige les défauts bloquants des clients historiques Python/R et ajoute un client Gallica robuste, des remplacements legacy, un déployeur sûr et des tests live.
+- **P1** modernise les clients R encore fragiles (`bnfimage`, `gargallica`) et renforce le moteur de déploiement.
+- **P2** fournit un pack éditorial publiable pour les pages Wrappers, Pyllica et IIIF, avec détection automatique de dérive de la documentation publique.
+
+La matrice détaillée de clôture est disponible dans `docs/AUDIT_CLOSURE.md`.
+
+## P0 : défauts bloquants
+
+Le P0 apporte :
 
 - le client Gallica robuste ;
 - les correctifs de compatibilité PyGallica et Pyllica ;
@@ -42,16 +52,29 @@ Le remplacement P1 :
 
 Le déployeur sait désormais créer un helper absent en amont avec l’action gérée `create`. Une collision est considérée comme une dérive et bloque l’application sans `--force`; le rollback supprime le fichier s’il avait été créé par le déployeur.
 
+## P2 : normalisation documentaire
+
+Le pack `docs/api.bnf.fr/` contient des textes de remplacement prêts à relire/publier pour :
+
+- la page des wrappers Gallica ;
+- la documentation Pyllica ;
+- la page IIIF Gallica ;
+- la matrice de statut des wrappers tiers ;
+- les sources et dates de vérification.
+
+Les corrections éditoriales couvrent notamment les exemples Python invalides, les statuts de maintenance, les quotas Gallica, la distinction IIIF Image / Presentation et les mélanges de versions dans les dépôts d’exemples.
+
 ## CI
 
-Quatre rails indépendants couvrent désormais le chantier :
+Cinq rails indépendants couvrent désormais le chantier :
 
 1. `P0 local regression suite` : Python 3.10 et 3.12 ;
 2. `P0 public Gallica validation` : smoke tests publics contre Gallica depuis GitHub ;
 3. `P0 legacy deployment validation` : `apply → verify → rollback` et contrôle des SHA amont ;
-4. `P1 R compatibility validation` : parsing réel des remplacements R et classification des requêtes IIIF HD.
+4. `P1 R compatibility validation` : parsing réel des remplacements R et classification des requêtes IIIF HD ;
+5. `P2 documentation validation` : validation des exemples éditoriaux et détection de dérive de la documentation publique api.bnf.fr.
 
-Les branches P0, P1 et `main` sont couvertes. Une fusion n’est recommandée que lorsque les quatre rails concernés sont verts sur la même tête de commit.
+Le rail P2 s’exécute également chaque lundi à 07:37 UTC. Une fusion n’est recommandée que lorsque tous les rails concernés sont verts sur la même tête de commit.
 
 ## Déploiement legacy
 
@@ -89,3 +112,7 @@ python scripts/deploy_legacy.py verify --profile gargallica --target /chemin/gar
 Profils disponibles : `pygallica`, `pyllica`, `gallipy`, `gargallica`, `bnfimage`.
 
 Le déployeur refuse par défaut un fichier dont le SHA ne correspond plus à la version auditée. `--force` ne doit être utilisé qu’après revue manuelle du diff.
+
+## Limite importante
+
+Ce dépôt fournit des correctifs, remplacements, tests et textes de publication. Il ne modifie pas automatiquement les dépôts tiers ni le CMS api.bnf.fr. Les écarts encore visibles en amont doivent être traités par publication éditoriale ou par contribution aux projets concernés.
