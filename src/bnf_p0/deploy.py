@@ -47,11 +47,15 @@ def _replacement_bytes(package_root: Path, item: dict[str, Any]) -> bytes:
 def _is_already_applied(target: Path, item: dict[str, Any], package_root: Path) -> bool:
     if not target.exists():
         return False
-    if item["action"] == "replace":
+    if item["action"] in {"replace", "create"}:
         return target.read_bytes() == _replacement_bytes(package_root, item)
     if item["action"] == "text_patch":
         text = target.read_text(encoding="utf-8")
-        return all(p["new"] in text and p["old"] not in text for p in item["patches"])
+        # A replacement may legitimately contain the original substring
+        # (for example inserting a new source() line after library(rvest)).
+        # Presence of every replacement is therefore the stable/idempotent
+        # criterion; requiring every old fragment to disappear is incorrect.
+        return all(p["new"] in text for p in item["patches"])
     raise ValueError(f"Action inconnue: {item['action']}")
 
 
@@ -62,15 +66,22 @@ def inspect_profile(target_root: str | Path, profile: dict[str, Any], package_ro
     for item in profile["files"]:
         target = root / item["path"]
         expected = item.get("expected_blob_sha")
+        action = item["action"]
         if not target.exists():
-            result.append(FileStatus(item["path"], "MISSING", None, expected, "fichier amont absent"))
+            if action == "create":
+                result.append(FileStatus(item["path"], "EXPECTED_ABSENT", None, expected, "fichier à créer"))
+            else:
+                result.append(FileStatus(item["path"], "MISSING", None, expected, "fichier amont absent"))
             continue
         if _is_already_applied(target, item, pkg):
             result.append(FileStatus(item["path"], "ALREADY_APPLIED", git_blob_sha(target.read_bytes()), expected))
             continue
         data = target.read_bytes()
         actual = git_blob_sha(data)
-        if expected and expected in accepted_blob_shas(data):
+        if action == "create":
+            status = "DRIFT"
+            detail = "un fichier non géré existe déjà à l'emplacement à créer"
+        elif expected and expected in accepted_blob_shas(data):
             status = "EXPECTED"
             detail = "SHA amont conforme"
         else:
@@ -162,15 +173,15 @@ def apply_profile(target_root: str | Path, profile: dict[str, Any], package_root
             continue
         existed = _backup_existing(root, item["path"], backup_dir)
         target.parent.mkdir(parents=True, exist_ok=True)
-        if item["action"] == "replace":
+        if item["action"] in {"replace", "create"}:
             target.write_bytes(_replacement_bytes(pkg, item))
         elif item["action"] == "text_patch":
             text = target.read_text(encoding="utf-8")
             for patch in item["patches"]:
                 old, new = patch["old"], patch["new"]
+                if new in text:
+                    continue
                 if old not in text:
-                    if new in text:
-                        continue
                     raise RuntimeError(f"Motif de patch introuvable dans {item['path']}: {old}")
                 text = text.replace(old, new, 1)
             target.write_text(text, encoding="utf-8")

@@ -1,0 +1,44 @@
+name: P1 R compatibility validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'p1/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - name: Parse R replacements
+        shell: Rscript {0}
+        run: |
+          files <- c(
+            "legacy_replacements/bnfimage/R/utils.R",
+            "legacy_replacements/bnfimage/R/bi_image.R",
+            "legacy_replacements/gargallica/gallica_api.R",
+            "legacy_replacements/gargallica/full_hd_image.R"
+          )
+          for (f in files) {
+            parse(file = f)
+            message("PASS parse: ", f)
+          }
+      - name: Check bnfimage quota classification
+        shell: Rscript {0}
+        run: |
+          source("legacy_replacements/bnfimage/R/utils.R")
+          stopifnot(bi_is_hd_request("full", "full"))
+          stopifnot(bi_is_hd_request("full", "1200,1200"))
+          stopifnot(!bi_is_hd_request("full", "500,500"))
+          stopifnot(!bi_is_hd_request("0,0,500,500", "full"))
+          message("PASS bnfimage quota classification")
