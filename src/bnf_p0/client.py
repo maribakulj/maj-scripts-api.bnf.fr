@@ -5,8 +5,11 @@ from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
+from .alto import alto_to_text
 from .ark import ark_uri, gallica_url, normalize_ark_id
+from .guard import GallicaSecurityCheck, guard, looks_like_security_page
 from .http import RobustHttpClient
+from .pdf_build import jpegs_to_pdf
 from .xmlutil import document_to_dict, find_first_text, local_name, parse_xml
 
 BASE = "https://gallica.bnf.fr"
@@ -28,19 +31,19 @@ class GallicaClient:
 
     def sru(self, query: str, *, start_record: int = 1, maximum_records: int = 50) -> dict:
         params = {"operation": "searchRetrieve", "version": "1.2", "query": query, "startRecord": str(start_record), "maximumRecords": str(maximum_records)}
-        r = self.http.get(f"{BASE}/SRU", params=params)
+        r = guard(self.http.get(f"{BASE}/SRU", params=params), expect="xml")
         return document_to_dict(r.content)
 
     def oai_record(self, ark: str) -> dict:
-        r = self.http.get(f"{BASE}/services/OAIRecord", params={"ark": normalize_ark_id(ark)})
+        r = guard(self.http.get(f"{BASE}/services/OAIRecord", params={"ark": normalize_ark_id(ark)}), expect="xml")
         return document_to_dict(r.content)
 
     def pagination(self, ark: str) -> dict:
-        r = self.http.get(f"{BASE}/services/Pagination", params={"ark": normalize_ark_id(ark)})
+        r = guard(self.http.get(f"{BASE}/services/Pagination", params={"ark": normalize_ark_id(ark)}), expect="xml")
         return document_to_dict(r.content)
 
     def view_count(self, ark: str) -> int:
-        r = self.http.get(f"{BASE}/services/Pagination", params={"ark": normalize_ark_id(ark)})
+        r = guard(self.http.get(f"{BASE}/services/Pagination", params={"ark": normalize_ark_id(ark)}), expect="xml")
         root = parse_xml(r.content)
         value = find_first_text(root, "nbVueImages")
         if value is None:
@@ -98,7 +101,7 @@ class GallicaClient:
             if int(start_result) < 1:
                 raise ValueError("start_result doit être >= 1")
             params["startResult"] = str(int(start_result))
-        r = self.http.get(f"{BASE}/services/ContentSearch", params=params)
+        r = guard(self.http.get(f"{BASE}/services/ContentSearch", params=params), expect="xml")
         return document_to_dict(r.content)
 
     def toc(self, ark: str) -> str:
@@ -113,11 +116,19 @@ class GallicaClient:
             if not nviews or nviews < 1:
                 raise ValueError("nviews doit être >= 1 lorsque start_view est fourni")
             url = f"{root}/f{int(start_view)}n{int(nviews)}.texteBrut"
-        return self.http.get(url, bucket="text").text
+        response = self.http.get(url, bucket="text")
+        if looks_like_security_page(response.content):
+            raise GallicaSecurityCheck(
+                f"Gallica a renvoyé sa page de vérification anti-robot pour {url}. "
+                "`.texteBrut` est une URL du site web, pas une API : utiliser "
+                "GallicaClient.text() ou page_text(), qui passent par l'ALTO."
+            )
+        return response.text
 
     def alto(self, ark: str, view: int) -> bytes:
         params = {"O": normalize_ark_id(ark), "E": "ALTO", "Deb": str(int(view))}
-        return self.http.get(f"{BASE}/RequestDigitalElement", params=params).content
+        r = guard(self.http.get(f"{BASE}/RequestDigitalElement", params=params), expect="xml")
+        return r.content
 
     def precalculated_image(self, ark: str, *, view: int | None = None, resolution: str = "highres") -> bytes:
         if resolution not in {"thumbnail", "lowres", "medres", "highres"}:
@@ -125,7 +136,7 @@ class GallicaClient:
         root = gallica_url(ark)
         url = f"{root}/f{int(view)}.{resolution}" if view else f"{root}/{resolution}"
         bucket = "highres" if resolution == "highres" else "default"
-        return self.http.get(url, bucket=bucket).content
+        return guard(self.http.get(url, bucket=bucket), expect="image").content
 
     @staticmethod
     def _iiif_bucket(size: str) -> str:
@@ -141,13 +152,13 @@ class GallicaClient:
 
     def iiif_info(self, ark: str, *, view: int = 1) -> dict:
         url = f"{BASE}/iiif/{ark_uri(ark)}/f{int(view)}/info.json"
-        return self.http.get(url).json()
+        return guard(self.http.get(url), expect="json").json()
 
     def iiif_image(self, ark: str, *, view: int = 1, region: str = "full", size: str = "1000,", rotation: str | int = 0, quality: str = "native", fmt: str = "jpg") -> bytes:
         if not re.fullmatch(r"[A-Za-z0-9]+", fmt):
             raise ValueError("format IIIF invalide")
         url = f"{BASE}/iiif/{ark_uri(ark)}/f{int(view)}/{quote(str(region), safe=',')}/{quote(str(size), safe=',!^')}/{rotation}/{quality}.{fmt}"
-        return self.http.get(url, bucket=self._iiif_bucket(str(size))).content
+        return guard(self.http.get(url, bucket=self._iiif_bucket(str(size))), expect="image").content
 
     def pdf(self, ark: str, *, start_view: int | None = None, nviews: int | None = None) -> bytes:
         root = gallica_url(ark)
@@ -157,7 +168,43 @@ class GallicaClient:
             if not nviews or nviews < 1:
                 raise ValueError("nviews doit être >= 1 lorsque start_view est fourni")
             url = f"{root}/f{int(start_view)}n{int(nviews)}.pdf"
-        return self.http.get(url, bucket="pdf").content
+        return guard(self.http.get(url, bucket="pdf"), expect="pdf", url=url).content
+
+    # ------------------------------------------------------------------
+    # Routes de remplacement, entièrement dans les API
+    # ------------------------------------------------------------------
+
+    def page_text(self, ark: str, view: int) -> str:
+        """Texte océrisé d'une vue, via l'ALTO (remplace `.texteBrut`)."""
+        return alto_to_text(self.alto(ark, view))
+
+    def text(self, ark: str, *, start_view: int = 1, nviews: int | None = None,
+             separator: str = "\n\n") -> str:
+        """Texte océrisé d'un document, page par page, via l'ALTO.
+
+        Contrairement à `.texteBrut`, cette route n'est pas servie par le site
+        web : elle ne rencontre pas la vérification anti-robot.
+        """
+        total = self.view_count(ark)
+        start = max(1, min(int(start_view), total))
+        last = total if nviews is None else min(total, start + int(nviews) - 1)
+        return separator.join(self.page_text(ark, view) for view in range(start, last + 1))
+
+    def pdf_from_iiif(self, ark: str, *, start_view: int = 1, nviews: int | None = None,
+                      width: int = 1500) -> bytes:
+        """Reconstruit un PDF à partir des images IIIF (remplace `.pdf`).
+
+        Les JPEG sont insérés sans recompression. Attention à la cadence : les
+        requêtes IIIF de plus de 1000 pixels relèvent de la classe limitée.
+        """
+        total = self.view_count(ark)
+        start = max(1, min(int(start_view), total))
+        last = total if nviews is None else min(total, start + int(nviews) - 1)
+        images = [
+            self.iiif_image(ark, view=view, size=f"{int(width)},", fmt="jpg")
+            for view in range(start, last + 1)
+        ]
+        return jpegs_to_pdf(images)
 
     @staticmethod
     def save(data: bytes | str, path: str | Path) -> Path:
