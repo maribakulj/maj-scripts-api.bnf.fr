@@ -31,15 +31,24 @@ get_hd_image <- function(ark, output_dir = "img", page = 1, width = "full",
   )
   .bnf_hd_wait(min_interval_seconds)
   output <- file.path(output_dir, sprintf("%s_f%d.jpg", ark, as.integer(page)))
-  response <- httr::GET(
-    url,
-    httr::user_agent("bnf-api-p0/0.1.3"),
-    httr::write_disk(output, overwrite = TRUE)
-  )
+  response <- httr::GET(url, httr::user_agent("bnf-api-p0/0.1.3"))
+
   if (httr::status_code(response) == 429) {
     retry_after <- httr::headers(response)[["retry-after"]]
     stop(sprintf("Quota BnF atteint (429). Retry-After=%s", retry_after %||% "non fourni"))
   }
   httr::stop_for_status(response)
+
+  # Rien n'est ecrit avant d'avoir verifie le statut ET le contenu : sinon une
+  # page d'erreur HTML se retrouve sur le disque sous un nom d'image.
+  payload <- httr::content(response, as = "raw")
+  content_type <- httr::headers(response)[["content-type"]] %||% ""
+  if (!grepl("^image/", content_type) ||
+      !identical(as.integer(payload[1:3]), c(255L, 216L, 255L))) {
+    stop(sprintf("Contenu inattendu pour %s : %s (%d octets), aucun fichier ecrit",
+                 url, content_type, length(payload)))
+  }
+
+  writeBin(payload, output)
   output
 }

@@ -35,3 +35,17 @@ def test_manifest_patches_gargallica_sru_and_raw_text_calls():
     assert 'gargallica_read_html() %>%' in text
     assert '"action": "create"' in text
     assert '"bnfimage"' in text
+
+
+def test_gargallica_rejects_the_security_page_instead_of_parsing_it():
+    text = read("legacy_replacements/gargallica/gallica_api.R")
+    assert "gargallica_is_security_page" in text
+    assert "altcha" in text
+
+
+def test_hd_image_writes_nothing_before_checking_status_and_content():
+    text = read("legacy_replacements/gargallica/full_hd_image.R")
+    # write_disk ecrivait le corps de la reponse avant tout controle.
+    assert "httr::write_disk" not in text
+    assert "writeBin(payload, output)" in text
+    assert text.index("httr::stop_for_status") < text.index("writeBin(payload, output)")
