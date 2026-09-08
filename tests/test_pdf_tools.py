@@ -25,7 +25,8 @@ class FakeClient:
 
 def test_block_pdf_drops_repeated_cover_pages(tmp_path):
     client = FakeClient()
-    out = download_pdf("bpt6kX", tmp_path / "out.pdf", start=1, end=4, block_size=2, client=client)
+    out = download_pdf("bpt6kX", tmp_path / "out.pdf", start=1, end=4, block_size=2,
+                       client=client, source="web")
     reader = PdfReader(out)
     assert len(reader.pages) == 6
     assert client.calls == [(1, 2), (3, 2)]
@@ -73,7 +74,7 @@ def test_download_pdf_still_assembles_blocks_through_the_real_client():
     client, seen = _pdf_serving_client(make_pdf(4))
     with client:
         out = download_pdf("bpt6kX", Path("/tmp/bnf-p0-historique.pdf"),
-                           start=1, end=4, block_size=2, client=client)
+                           start=1, end=4, block_size=2, client=client, source="web")
     assert len(PdfReader(out).pages) == 6
     assert [u for u in seen if ".pdf" in u] == [
         "https://gallica.bnf.fr/ark:/12148/bpt6kX/f1n2.pdf",
@@ -88,3 +89,21 @@ def test_security_page_on_the_pdf_route_is_refused_not_saved():
     with client:
         with pytest.raises(GallicaSecurityCheck):
             client.pdf("bpt6kX", start_view=1, nviews=1)
+
+
+def test_download_pdf_rebuilds_from_iiif_by_default():
+    class _Client:
+        def __init__(self): self.calls = []
+        def view_count(self, ark): return 8
+        def pdf_from_iiif(self, ark, **kw): self.calls.append(kw); return b"%PDF-1.4 iiif"
+        def pdf(self, *a, **kw): raise AssertionError("la route web ne doit pas être appelée")
+
+    client = _Client()
+    out = download_pdf("bpt6kX", Path("/tmp/bnf-p0-iiif.pdf"), start=2, end=4, client=client)
+    assert out.read_bytes().startswith(b"%PDF")
+    assert client.calls == [{"start_view": 2, "nviews": 3, "width": 1000}]
+
+
+def test_download_pdf_refuses_an_unknown_source():
+    with pytest.raises(ValueError):
+        download_pdf("bpt6kX", Path("/tmp/x.pdf"), source="ftp")

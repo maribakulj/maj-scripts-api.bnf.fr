@@ -8,10 +8,30 @@
       "default_branch": "master",
       "vendor_core": true,
       "files": [
-        {"path": "python3/___init___.py", "expected_blob_sha": "d97dcd90720c2f70acc27148d8000837c11c3361", "action": "replace", "source": "legacy_replacements/PyGallica/python3/___init___.py"},
-        {"path": "python3/document_api.py", "expected_blob_sha": "b107b6fc8708e8b7b24486a1ee32ab6ff1d9133f", "action": "replace", "source": "legacy_replacements/PyGallica/python3/document_api.py"},
-        {"path": "python3/iiif_api.py", "expected_blob_sha": "a832ed83c248ec068fc9e63b396e84011c7b7ba1", "action": "replace", "source": "legacy_replacements/PyGallica/python3/iiif_api.py"},
-        {"path": "python3/search_api.py", "expected_blob_sha": "db2b67f6d2651a72c20491e73deaa549255b6102", "action": "replace", "source": "legacy_replacements/PyGallica/python3/search_api.py"}
+        {
+          "path": "python3/___init___.py",
+          "expected_blob_sha": "d97dcd90720c2f70acc27148d8000837c11c3361",
+          "action": "replace",
+          "source": "legacy_replacements/PyGallica/python3/___init___.py"
+        },
+        {
+          "path": "python3/document_api.py",
+          "expected_blob_sha": "b107b6fc8708e8b7b24486a1ee32ab6ff1d9133f",
+          "action": "replace",
+          "source": "legacy_replacements/PyGallica/python3/document_api.py"
+        },
+        {
+          "path": "python3/iiif_api.py",
+          "expected_blob_sha": "a832ed83c248ec068fc9e63b396e84011c7b7ba1",
+          "action": "replace",
+          "source": "legacy_replacements/PyGallica/python3/iiif_api.py"
+        },
+        {
+          "path": "python3/search_api.py",
+          "expected_blob_sha": "db2b67f6d2651a72c20491e73deaa549255b6102",
+          "action": "replace",
+          "source": "legacy_replacements/PyGallica/python3/search_api.py"
+        }
       ]
     },
     "pyllica": {
@@ -19,10 +39,30 @@
       "default_branch": "master",
       "vendor_core": true,
       "files": [
-        {"path": "pyllicalabs.py", "expected_blob_sha": "e5eb48bd39ce4638586d8a6efe22d80f9b777339", "action": "replace", "source": "legacy_replacements/Pyllica/pyllicalabs.py"},
-        {"path": "pyllicalabspdf.py", "expected_blob_sha": "875f43697c78e5757e8f826bf0e5ec358934e631", "action": "replace", "source": "legacy_replacements/Pyllica/pyllicalabspdf.py"},
-        {"path": "pyllicalabsjpg.py", "expected_blob_sha": "7ca586bd8c8187ec2164711341692fc7b5ee42dc", "action": "replace", "source": "legacy_replacements/Pyllica/pyllicalabsjpg.py"},
-        {"path": "pyllicalabsjpgpress.py", "expected_blob_sha": "3f26cf0035f8710fe7be504a6a23f048d81109e3", "action": "replace", "source": "legacy_replacements/Pyllica/pyllicalabsjpgpress.py"}
+        {
+          "path": "pyllicalabs.py",
+          "expected_blob_sha": "e5eb48bd39ce4638586d8a6efe22d80f9b777339",
+          "action": "replace",
+          "source": "legacy_replacements/Pyllica/pyllicalabs.py"
+        },
+        {
+          "path": "pyllicalabspdf.py",
+          "expected_blob_sha": "875f43697c78e5757e8f826bf0e5ec358934e631",
+          "action": "replace",
+          "source": "legacy_replacements/Pyllica/pyllicalabspdf.py"
+        },
+        {
+          "path": "pyllicalabsjpg.py",
+          "expected_blob_sha": "7ca586bd8c8187ec2164711341692fc7b5ee42dc",
+          "action": "replace",
+          "source": "legacy_replacements/Pyllica/pyllicalabsjpg.py"
+        },
+        {
+          "path": "pyllicalabsjpgpress.py",
+          "expected_blob_sha": "3f26cf0035f8710fe7be504a6a23f048d81109e3",
+          "action": "replace",
+          "source": "legacy_replacements/Pyllica/pyllicalabsjpgpress.py"
+        }
       ]
     },
     "gallipy": {
@@ -30,11 +70,38 @@
       "default_branch": "master",
       "vendor_core": true,
       "files": [
-        {"path": "scripts/getpdf.py", "expected_blob_sha": "5a91eb61020d2a4eeecc44dc47548e2160ad7622", "action": "replace", "source": "legacy_replacements/Gallipy/scripts/getpdf.py"},
-        {"path": "gallipy/resource.py", "expected_blob_sha": "80f0190ca35c8e2b488c773f5b1ba871a435626e", "action": "text_patch", "patches": [
-          {"old": "l = lambda: self.iiif_info_sync(image)", "new": "l = lambda: self.iiif_info_sync(view)"},
-          {"old": "l = lambda: self.iiif_data_sync(image, region, size, rotation, quality, imformat)", "new": "l = lambda: self.iiif_data_sync(view, region, size, rotation, quality, imformat)"}
-        ]}
+        {
+          "path": "scripts/getpdf.py",
+          "expected_blob_sha": "5a91eb61020d2a4eeecc44dc47548e2160ad7622",
+          "action": "replace",
+          "source": "legacy_replacements/Gallipy/scripts/getpdf.py"
+        },
+        {
+          "path": "gallipy/resource.py",
+          "expected_blob_sha": "80f0190ca35c8e2b488c773f5b1ba871a435626e",
+          "action": "text_patch",
+          "patches": [
+            {
+              "old": "l = lambda: self.iiif_info_sync(image)",
+              "new": "l = lambda: self.iiif_info_sync(view)"
+            },
+            {
+              "old": "l = lambda: self.iiif_data_sync(image, region, size, rotation, quality, imformat)",
+              "new": "l = lambda: self.iiif_data_sync(view, region, size, rotation, quality, imformat)"
+            }
+          ]
+        },
+        {
+          "path": "gallipy/helpers.py",
+          "action": "text_patch",
+          "expected_blob_sha": "ad6217633dc6310f9a6cd5684a958db9e1beb5b5",
+          "patches": [
+            {
+              "old": "        with urllib.request.urlopen(url, timeout=30) as res:",
+              "new": "        request = urllib.request.Request(\n            url,\n            headers={\"User-Agent\": \"bnf-api-p0/0.2.0 (api.bnf.fr remediation)\"},\n        )\n        with urllib.request.urlopen(request, timeout=30) as res:"
+            }
+          ]
+        }
       ]
     },
     "gargallica": {
@@ -42,13 +109,36 @@
       "default_branch": "master",
       "vendor_core": false,
       "files": [
-        {"path": "full_hd_image.R", "expected_blob_sha": "f85c2e69fbd3019af4bad35684b0064d38d429cb", "action": "replace", "source": "legacy_replacements/gargallica/full_hd_image.R"},
-        {"path": "gallica_api.R", "action": "create", "source": "legacy_replacements/gargallica/gallica_api.R"},
-        {"path": "gallica.R", "expected_blob_sha": "7d071fabe85a588db73c6dbf8d0c9370fdbdbcf6", "action": "text_patch", "patches": [
-          {"old": "library(rvest)\n", "new": "library(rvest)\nsource(\"gallica_api.R\")\n"},
-          {"old": "page <- function(i)xml2::read_xml(paste0('http://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))", "new": "page <- function(i) gargallica_read_xml(paste0('https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))"},
-          {"old": "    read_html() %>%", "new": "    gargallica_read_html() %>%"}
-        ]}
+        {
+          "path": "full_hd_image.R",
+          "expected_blob_sha": "f85c2e69fbd3019af4bad35684b0064d38d429cb",
+          "action": "replace",
+          "source": "legacy_replacements/gargallica/full_hd_image.R"
+        },
+        {
+          "path": "gallica_api.R",
+          "action": "create",
+          "source": "legacy_replacements/gargallica/gallica_api.R"
+        },
+        {
+          "path": "gallica.R",
+          "expected_blob_sha": "7d071fabe85a588db73c6dbf8d0c9370fdbdbcf6",
+          "action": "text_patch",
+          "patches": [
+            {
+              "old": "library(rvest)\n",
+              "new": "library(rvest)\nsource(\"gallica_api.R\")\n"
+            },
+            {
+              "old": "page <- function(i)xml2::read_xml(paste0('http://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))",
+              "new": "page <- function(i) gargallica_read_xml(paste0('https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(', question,')&collapsing=false&maximumRecords=50&startRecord=', i))"
+            },
+            {
+              "old": "    read_html() %>%",
+              "new": "    gargallica_read_html() %>%"
+            }
+          ]
+        }
       ]
     },
     "bnfimage": {
@@ -56,8 +146,18 @@
       "default_branch": "master",
       "vendor_core": false,
       "files": [
-        {"path": "R/utils.R", "expected_blob_sha": "95e9aa50dbd0eb4af15a1a9f522eff6c821d5bc9", "action": "replace", "source": "legacy_replacements/bnfimage/R/utils.R"},
-        {"path": "R/bi_image.R", "expected_blob_sha": "2094a4bf09f210590a75ad617b51d784f42767fb", "action": "replace", "source": "legacy_replacements/bnfimage/R/bi_image.R"}
+        {
+          "path": "R/utils.R",
+          "expected_blob_sha": "95e9aa50dbd0eb4af15a1a9f522eff6c821d5bc9",
+          "action": "replace",
+          "source": "legacy_replacements/bnfimage/R/utils.R"
+        },
+        {
+          "path": "R/bi_image.R",
+          "expected_blob_sha": "2094a4bf09f210590a75ad617b51d784f42767fb",
+          "action": "replace",
+          "source": "legacy_replacements/bnfimage/R/bi_image.R"
+        }
       ]
     }
   }
