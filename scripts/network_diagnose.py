@@ -12,10 +12,15 @@ HOST = "gallica.bnf.fr"
 PORT = 443
 
 
-def diagnose() -> dict:
-    report = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "host": HOST, "dns": {"ok": False}, "tls": {"ok": False}}
+def diagnose(host: str = HOST, port: int = PORT) -> dict:
+    """Vérifie qu'un hôte est joignable (DNS puis TLS).
+
+    Sert à distinguer un vrai échec fonctionnel d'une simple impossibilité
+    d'accéder au service depuis l'environnement d'exécution.
+    """
+    report = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "host": host, "dns": {"ok": False}, "tls": {"ok": False}}
     try:
-        infos = socket.getaddrinfo(HOST, PORT, type=socket.SOCK_STREAM)
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
         addresses = sorted({item[4][0] for item in infos})
         report["dns"] = {"ok": True, "addresses": addresses}
     except Exception as exc:
@@ -24,8 +29,8 @@ def diagnose() -> dict:
         return report
     try:
         context = ssl.create_default_context()
-        with socket.create_connection((HOST, PORT), timeout=10) as sock:
-            with context.wrap_socket(sock, server_hostname=HOST) as tls:
+        with socket.create_connection((host, port), timeout=10) as sock:
+            with context.wrap_socket(sock, server_hostname=host) as tls:
                 cert = tls.getpeercert()
                 report["tls"] = {"ok": True, "protocol": tls.version(), "cipher": tls.cipher()[0] if tls.cipher() else None, "not_after": cert.get("notAfter")}
     except Exception as exc:
@@ -37,8 +42,9 @@ def diagnose() -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output")
+    ap.add_argument("--host", default=HOST, help="hôte à diagnostiquer (défaut: gallica.bnf.fr)")
     args = ap.parse_args()
-    report = diagnose()
+    report = diagnose(args.host)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     print(text)
     if args.output:
