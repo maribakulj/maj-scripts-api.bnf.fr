@@ -117,3 +117,75 @@ def test_vendor_core_is_self_contained_and_rollback_removes_it(tmp_path):
         assert not (target / "requirements-p0.txt").exists()
     finally:
         managed.unlink(missing_ok=True)
+
+
+def _vendor_profile():
+    return {
+        "repository": "exemple/tiers",
+        "vendor_core": True,
+        "files": [],
+    }
+
+
+def test_recompiling_the_core_does_not_block_a_second_apply(tmp_path):
+    """Un simple import régénère un .pyc dans la source. Si le déployeur le
+    vendorise et le compare, le redéploiement suivant se croit face à une
+    dérive et exige --force pour un non-événement."""
+    from bnf_p0.deploy import apply_profile
+
+    package_root = tmp_path / "paquet"
+    core = package_root / "src" / "bnf_p0"
+    core.mkdir(parents=True)
+    (core / "__init__.py").write_text("# coeur\n", encoding="utf-8")
+
+    target = tmp_path / "tiers"
+    target.mkdir()
+
+    apply_profile(target, _vendor_profile(), package_root)
+
+    # Python compile le cœur au premier import : un cache apparaît côté source.
+    cache = core / "__pycache__"
+    cache.mkdir()
+    (cache / "__init__.cpython-312.pyc").write_bytes(b"\x00cache\x00")
+
+    # Le second déploiement doit passer sans --force.
+    apply_profile(target, _vendor_profile(), package_root)
+
+
+def test_compiled_caches_are_never_copied_into_a_third_party_checkout(tmp_path):
+    from bnf_p0.deploy import apply_profile
+
+    package_root = tmp_path / "paquet"
+    core = package_root / "src" / "bnf_p0"
+    (core / "__pycache__").mkdir(parents=True)
+    (core / "__init__.py").write_text("# coeur\n", encoding="utf-8")
+    (core / "__pycache__" / "__init__.cpython-312.pyc").write_bytes(b"\x00cache\x00")
+
+    target = tmp_path / "tiers"
+    target.mkdir()
+    apply_profile(target, _vendor_profile(), package_root)
+
+    assert (target / "bnf_p0" / "__init__.py").exists()
+    assert not (target / "bnf_p0" / "__pycache__").exists()
+    assert not list((target / "bnf_p0").rglob("*.pyc"))
+
+
+def test_two_deployments_in_the_same_second_keep_both_backups(tmp_path):
+    """L'horodatage des sauvegardes est à la seconde ; deux déploiements
+    rapprochés ne doivent ni planter ni écraser la sauvegarde précédente."""
+    from bnf_p0.deploy import apply_profile
+
+    package_root = tmp_path / "paquet"
+    core = package_root / "src" / "bnf_p0"
+    core.mkdir(parents=True)
+    (core / "__init__.py").write_text("# coeur\n", encoding="utf-8")
+
+    target = tmp_path / "tiers"
+    target.mkdir()
+
+    first = apply_profile(target, _vendor_profile(), package_root)
+    second = apply_profile(target, _vendor_profile(), package_root)
+
+    assert first["backup_dir"] != second["backup_dir"]
+    assert (target / first["backup_dir"]).exists()
+    assert (target / second["backup_dir"]).exists()
