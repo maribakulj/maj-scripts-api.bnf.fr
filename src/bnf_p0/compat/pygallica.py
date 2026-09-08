@@ -73,9 +73,13 @@ class Document:
 
     @staticmethod
     def texte_brut(identifier: str):
+        """Texte océrisé du document.
+
+        Passe par l'ALTO plutôt que par `.texteBrut` : cette dernière est une
+        URL du site web, désormais derrière une vérification anti-robot.
+        """
         with GallicaClient() as client:
-            raw = client.texte_brut(identifier)
-        return _best_effort_markup_dict(raw)
+            return client.text(identifier)
 
     @staticmethod
     def ocr(identifier: str, page: str | int):

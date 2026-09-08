@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,6 +12,8 @@ from .guard import GallicaSecurityCheck, guard, looks_like_security_page
 from .http import RobustHttpClient
 from .pdf_build import jpegs_to_pdf
 from .xmlutil import document_to_dict, find_first_text, local_name, parse_xml
+
+log = logging.getLogger(__name__)
 
 BASE = "https://gallica.bnf.fr"
 
@@ -127,7 +130,7 @@ class GallicaClient:
 
     def alto(self, ark: str, view: int) -> bytes:
         params = {"O": normalize_ark_id(ark), "E": "ALTO", "Deb": str(int(view))}
-        r = guard(self.http.get(f"{BASE}/RequestDigitalElement", params=params), expect="xml")
+        r = guard(self.http.get(f"{BASE}/RequestDigitalElement", params=params, bucket="alto"), expect="xml")
         return r.content
 
     def precalculated_image(self, ark: str, *, view: int | None = None, resolution: str = "highres") -> bytes:
@@ -188,14 +191,22 @@ class GallicaClient:
         total = self.view_count(ark)
         start = max(1, min(int(start_view), total))
         last = total if nviews is None else min(total, start + int(nviews) - 1)
+        pages = last - start + 1
+        if pages > 1:
+            # `.texteBrut` livrait tout le document en un appel ; l'ALTO est
+            # paginé. Le coût en requêtes est donc proportionnel au nombre de
+            # vues, et l'appelant doit pouvoir l'anticiper.
+            log.info("Texte via ALTO : %d vue(s), soit autant de requêtes.", pages)
         return separator.join(self.page_text(ark, view) for view in range(start, last + 1))
 
     def pdf_from_iiif(self, ark: str, *, start_view: int = 1, nviews: int | None = None,
-                      width: int = 1500) -> bytes:
+                      width: int = 1000) -> bytes:
         """Reconstruit un PDF à partir des images IIIF (remplace `.pdf`).
 
-        Les JPEG sont insérés sans recompression. Attention à la cadence : les
-        requêtes IIIF de plus de 1000 pixels relèvent de la classe limitée.
+        Les JPEG sont insérés sans recompression. La largeur par défaut est
+        volontairement de 1000 pixels : au-delà, les requêtes IIIF relèvent de
+        la classe limitée à 5 appels par minute, ce qui rend la reconstruction
+        d'un document de plusieurs dizaines de pages très longue.
         """
         total = self.view_count(ark)
         start = max(1, min(int(start_view), total))

@@ -62,6 +62,13 @@ def _periodical_id(url_or_ark: str) -> str:
 
 def textpress(url: str, title="titre", year=1900, month=1, day=1, item=5, rate=1,
               lastpage=1, output_dir="."):
+    """Extrait le texte de fascicules de périodique.
+
+    Le texte provient de l'ALTO et non de `.texteBrut` : cette dernière est
+    une URL du site web, désormais derrière une vérification anti-robot. Le
+    contenu est le même OCR, et l'ALTO préserve en plus la structure des
+    lignes et des blocs.
+    """
     del lastpage
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -73,26 +80,43 @@ def textpress(url: str, title="titre", year=1900, month=1, day=1, item=5, rate=1
             if not ark:
                 log.warning("Aucun fascicule trouvé pour %s", d.isoformat())
                 continue
-            raw = client.texte_brut(ark)
             path = out / f"{title}_{d:%Y%m%d}.txt"
-            path.write_text(html_to_text(raw), encoding="utf-8")
+            path.write_text(client.text(ark), encoding="utf-8")
             saved.append(path)
     return saved
 
 
 def pdfpress(url: str, title="titre", year=1900, month=1, day=1, item=5, rate=1,
-             output_dir="."):
+             output_dir=".", *, source="iiif", width=1000):
+    """Récupère les fascicules en PDF.
+
+    `source="iiif"` (défaut) reconstruit le PDF à partir des images IIIF. Il
+    n'existe aucune route API produisant le PDF de Gallica : le suffixe `.pdf`
+    est une URL du site web, désormais derrière une vérification anti-robot.
+    Le PDF obtenu est donc fait d'images et n'a pas de couche de texte.
+
+    `source="web"` conserve la route historique, qui refonctionnera si Gallica
+    la rouvre ; elle lève une erreur explicite tant que ce n'est pas le cas.
+    """
+    if source not in {"iiif", "web"}:
+        raise ValueError("source doit valoir 'iiif' ou 'web'")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     periodical = _periodical_id(url)
     saved = []
+    if source == "iiif":
+        log.warning(
+            "PDF reconstruit à partir des images IIIF : pas de couche de texte. "
+            "Utiliser textpress() pour le texte."
+        )
     with GallicaClient() as client:
         for d in _dates(year, month, day, rate, item):
             ark = client.issue_for_date(periodical, d)
             if not ark:
                 log.warning("Aucun fascicule trouvé pour %s", d.isoformat())
                 continue
-            data = client.pdf(ark)
+            data = (client.pdf_from_iiif(ark, width=width) if source == "iiif"
+                    else client.pdf(ark))
             path = out / f"{title}_{d:%Y%m%d}.pdf"
             path.write_bytes(data)
             saved.append(path)
