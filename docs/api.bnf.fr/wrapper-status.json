@@ -1,5 +1,5 @@
 {
-  "verified_date": "2026-09-02",
+  "verified_date": "2026-09-08",
   "policy": "A GitHub repository that is not archived is not automatically considered maintained. The status below describes only facts verified during this audit and the editorial treatment recommended for api.bnf.fr.",
   "wrappers": [
     {
@@ -14,7 +14,7 @@
       "repository": "GeoHistoricalData/gallipy",
       "github_archived": false,
       "editorial_status": "third-party-audited",
-      "recommendation": "Do not infer active maintenance from the non-archived flag. Mention the 2026 compatibility fixes for async IIIF and PDF reconstruction."
+      "recommendation": "Do not infer active maintenance from the non-archived flag. As of September 2026 every function fails with HTTP 403 because the library sends no User-Agent header; the 2026 compatibility fixes for async IIIF, PDF reconstruction and client identification live in the maintenance repository and have not been merged upstream."
     },
     {
       "name": "fdh-gallica",

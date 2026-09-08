@@ -27,7 +27,23 @@ La date structurée doit être calculée à partir de `dayOfYear`. Ne pas parser
 
 ## Texte brut
 
-Les extractions `.texteBrut` sont actuellement limitées à 5 appels par minute. Un client doit donc :
+`.texteBrut` est une adresse du site web, non un service d’API, et peut être soumise à une vérification anti-robot renvoyée avec un code `200`. Pour un traitement automatisé, la route à utiliser est l’ALTO :
+
+```text
+https://gallica.bnf.fr/RequestDigitalElement?O=<identifiant>&E=ALTO&Deb=<vue>
+```
+
+L’ALTO fournit le même texte océrisé, avec en plus la structure des lignes et les coordonnées. Il est en revanche **paginé** : une requête par vue, là où `.texteBrut` renvoyait le document entier en un appel. Extraire un ouvrage de 300 vues représente donc 300 requêtes.
+
+Trois conséquences pratiques :
+
+- ne demandez que les vues dont vous avez besoin ;
+- espacez vos appels, aucun quota n’étant publié pour ce service ;
+- pour la constitution d’un corpus de grande ampleur, prenez contact avec l’équipe API de la BnF plutôt que de lancer des extractions massives.
+
+Les fichiers ALTO de Gallica déclarent `encoding="ISO-8859-1"` alors que leur contenu est encodé en UTF-8. Un analyseur XML suivant la déclaration abîme les caractères accentués ; corrigez la déclaration avant l’analyse.
+
+Si vous utilisez malgré tout `.texteBrut`, les extractions sont limitées à 5 appels par minute. Un client doit alors :
 
 - espacer les appels ;
 - traiter HTTP 429 ;
@@ -37,6 +53,8 @@ Les extractions `.texteBrut` sont actuellement limitées à 5 appels par minute.
 Le remplacement maintenu corrige notamment un ancien comportement qui téléchargeait deux fois le même texte en cas de succès.
 
 ## PDF
+
+`.PDF` est également une adresse du site web et relève de la même réserve que `.texteBrut`. Aucun service d’API ne produit le PDF de Gallica ; un PDF peut être reconstruit à partir des images IIIF, au prix d’une requête par vue et d’un résultat dépourvu de couche de texte.
 
 Les téléchargements `.PDF` sont actuellement limités à 4 appels par minute. Les scripts doivent intégrer une cadence appropriée et ne pas réessayer immédiatement en boucle en cas de limitation.
 

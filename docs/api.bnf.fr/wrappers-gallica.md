@@ -2,6 +2,31 @@
 
 Les API Gallica peuvent être appelées directement en HTTP. Plusieurs projets tiers proposent également des fonctions Python ou R facilitant certains usages. Ces projets ne sont pas des API BnF et leur présence dans cette page ne vaut ni garantie de maintenance ni support institutionnel.
 
+## Identifier son client
+
+Donnez à votre programme un en-tête `User-Agent` qui nomme votre projet et fournit un moyen de contact :
+
+```text
+User-Agent: mon-projet/1.0 (https://exemple.org/contact)
+```
+
+Les agents utilisateurs laissés par défaut par certaines bibliothèques HTTP peuvent être refusés avec un code `403`. Un client correctement identifié est également plus facile à joindre si l’un de ses usages pose problème.
+
+## Deux familles d’adresses à ne pas confondre
+
+Les **services d’API** — recherche SRU, API Document (`/services/…`), API IIIF, récupération de l’ALTO via `RequestDigitalElement` — sont conçus pour un accès programmatique.
+
+Les adresses de la forme `gallica.bnf.fr/ark:/12148/<identifiant>.texteBrut` ou `.pdf` sont, elles, des **URL du site web** avec un suffixe. Elles sont servies par le portail de consultation et peuvent être soumises à une vérification anti-robot : la réponse est alors une page HTML, renvoyée avec un code `200`. Un programme qui ne contrôle que le code de statut enregistre cette page comme s’il s’agissait du contenu demandé.
+
+Vérifiez donc le type de contenu reçu, et préférez les services d’API lorsqu’un équivalent existe :
+
+| Besoin | Route recommandée |
+|---|---|
+| Texte océrisé | `RequestDigitalElement` avec `E=ALTO` |
+| Images | API IIIF Image |
+| Recherche | SRU |
+| Métadonnées, fascicules, pagination | API Document (`/services/…`) |
+
 ## Avant d’utiliser un wrapper
 
 Pour un nouveau projet, vérifier en priorité :
@@ -45,7 +70,9 @@ L’exemple image utilise volontairement une largeur de 1000 pixels. Les requêt
 
 ### Gallipy
 
-Gallipy est un projet tiers historique. L’audit 2026 a identifié des incompatibilités dans certaines fonctions asynchrones et dans le script historique de reconstruction PDF. Des correctifs de compatibilité et une implémentation `pypdf` moderne sont disponibles dans le dépôt de maintenance.
+Gallipy est un projet tiers historique. L’audit 2026 a identifié des incompatibilités dans certaines fonctions asynchrones et dans le script historique de reconstruction PDF.
+
+Une vérification de septembre 2026 a montré que ses fonctions échouaient toutes en `403` : la bibliothèque n’envoie aucun en-tête `User-Agent`. Des correctifs de compatibilité, une identification correcte du client et une implémentation `pypdf` moderne sont disponibles dans le dépôt de maintenance ; ils n’ont pas été intégrés au dépôt d’origine.
 
 ### fdh-gallica
 

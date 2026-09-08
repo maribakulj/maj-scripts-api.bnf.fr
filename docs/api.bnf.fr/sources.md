@@ -1,6 +1,6 @@
 # Sources de vérification
 
-Vérification effectuée le 2 septembre 2026.
+Vérification effectuée le 2 septembre 2026, complétée le 8 septembre 2026.
 
 ## api.bnf.fr
 
@@ -50,3 +50,41 @@ URL actuellement liée par api.bnf.fr :
 `https://fdh.epfl.ch/index.php/Gallica_wrapper`
 
 La récupération a expiré lors de la vérification du 2 septembre 2026. Le statut retenu est donc « lien/projet non vérifié », pas « projet définitivement disparu ».
+
+
+## Mesures du 8 septembre 2026
+
+Relevés effectués par exécution réelle contre `gallica.bnf.fr`, chaque série encadrée par des requêtes témoins.
+
+### Vérification anti-robot sur les adresses du site web
+
+Après treize minutes sans aucune requête, quatre appels espacés de vingt secondes :
+
+| Adresse | Statut | Type | Taille | Page de vérification |
+|---|---|---|---|---|
+| `/services/Pagination` | 200 | `application/xml` | 59 108 o | non |
+| `ark:/12148/…​.texteBrut` | 200 | `text/html` | 50 212 o | **oui** |
+| `ark:/12148/…​.pdf` | 200 | `text/html` | 50 212 o | **oui** |
+| `RequestDigitalElement` (ALTO) | 200 | `application/xml` | 6 102 o | non |
+
+Les deux témoins écartent l’hypothèse d’une limitation passagère de l’adresse de test.
+
+### Agents utilisateurs refusés
+
+Même URL, même minute, seul l’en-tête `User-Agent` change :
+
+| En-tête envoyé | Statut |
+|---|---|
+| aucun | 200 |
+| chaîne identifiant un projet | 200 |
+| agents par défaut de plusieurs bibliothèques HTTP courantes | **403** |
+
+Aucune mention de ce comportement sur `https://api.bnf.fr/fr/node/232` : recherche infructueuse pour « user-agent », « agent », « 403 » et « Forbidden ».
+
+### Encodage des fichiers ALTO
+
+Déclaration du document : `encoding="ISO-8859-1"`. En-tête HTTP : `charset=UTF-8`. Contenu réel : UTF-8. Un analyseur XML conforme suit la déclaration et abîme les caractères accentués — 33 mots sur une seule page de l’exemplaire testé.
+
+### Routes d’extraction du texte
+
+`E=TEXTE_BRUT` et `E=TEXT` sur `RequestDigitalElement` renvoient `403` : `E=ALTO` est la seule valeur donnant le texte océrisé.
