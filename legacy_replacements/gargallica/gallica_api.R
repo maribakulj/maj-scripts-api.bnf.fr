@@ -54,7 +54,23 @@ gargallica_read_xml <- function(url) {
   xml2::read_xml(httr::content(response, as = "raw"))
 }
 
+# Gallica sert une page de verification anti-robot sur ses routes web
+# (`.texteBrut`), avec un statut 200 et du HTML valide : sans ce controle,
+# xml2 l'analyse sans broncher et le captcha traverse tout le script.
+gargallica_is_security_page <- function(doc) {
+  corps <- xml2::xml_text(xml2::xml_find_first(doc, "//body"))
+  if (is.na(corps)) return(FALSE)
+  grepl("altcha|rification de s\u00e9curit\u00e9", corps, ignore.case = TRUE)
+}
+
 gargallica_read_html <- function(url) {
   response <- gargallica_get(url, rate_class = "texteBrut")
-  xml2::read_html(httr::content(response, as = "raw"))
+  doc <- xml2::read_html(httr::content(response, as = "raw"))
+  if (gargallica_is_security_page(doc)) {
+    stop(sprintf(paste0("Gallica a renvoye sa page de verification anti-robot pour %s. ",
+                        "`.texteBrut` est une URL du site web, pas une API : ",
+                        "passer par l'ALTO (RequestDigitalElement, E=ALTO)."), url),
+         call. = FALSE)
+  }
+  doc
 }

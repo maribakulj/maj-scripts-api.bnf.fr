@@ -20,8 +20,15 @@ def main():
     p.add_argument("-s", "--start", type=int, default=1)
     p.add_argument("-e", "--end", type=int)
     p.add_argument("--blocksize", type=int, default=100)
+    p.add_argument("--source", choices=["iiif", "web"], default="iiif",
+                   help="iiif: reconstruit depuis les images (défaut) ; "
+                        "web: route .pdf historique, aujourd'hui protégée")
+    p.add_argument("--width", type=int, default=1000,
+                   help="largeur des images IIIF ; au-delà de 1000 px, "
+                        "la classe limitée à 5 appels/minute s'applique")
     args = p.parse_args()
-    path = download_pdf(args.ark, args.outputfile, start=args.start, end=args.end, block_size=args.blocksize)
+    path = download_pdf(args.ark, args.outputfile, start=args.start, end=args.end,
+                        block_size=args.blocksize, source=args.source, width=args.width)
     print(path)
 
 
