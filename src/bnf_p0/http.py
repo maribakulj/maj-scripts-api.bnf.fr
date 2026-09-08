@@ -12,9 +12,60 @@ from .rate_limit import RateLimiter
 
 RETRYABLE = {429, 500, 502, 503, 504}
 
+DEFAULT_USER_AGENT = "bnf-api-p0/0.1.3 (api.bnf.fr remediation)"
+
+
+def probe_user_agent(url: str, user_agent: str = DEFAULT_USER_AGENT, *,
+                     transport: httpx.BaseTransport | None = None,
+                     timeout: float = 30.0) -> dict:
+    """Vérifie que l'agent utilisateur du client est toujours accepté.
+
+    Gallica refuse par 403 les signatures de plusieurs bibliothèques HTTP
+    courantes (`python-requests`, `Python-urllib`, `python-httpx`, `curl`).
+    Cette liste n'est documentée nulle part sur api.bnf.fr : si elle
+    s'élargissait jusqu'à couvrir l'agent de ce client, tous les appels
+    échoueraient d'un coup, et une validation qui ne teste qu'un seul agent
+    conclurait « les API Gallica sont cassées » au lieu de « notre agent est
+    refusé ».
+
+    On compare donc deux requêtes : l'une avec l'agent du client, l'autre
+    sans en-tête `User-Agent`. Le témoin sert au diagnostic, pas à contourner
+    quoi que ce soit — si l'agent du client venait à être refusé, la réponse
+    est de le faire savoir à la BnF, pas de s'annoncer autrement.
+    """
+    def fetch(headers: dict[str, str]) -> int | None:
+        try:
+            with httpx.Client(timeout=timeout, follow_redirects=True,
+                              transport=transport, headers=headers) as client:
+                if "User-Agent" not in headers:
+                    client.headers.pop("user-agent", None)
+                return client.get(url).status_code
+        except Exception:
+            return None
+
+    declared = fetch({"User-Agent": user_agent})
+    if declared == 200:
+        return {"status": "ACCEPTED", "ok": True, "user_agent": user_agent,
+                "http_with_user_agent": declared}
+
+    control = fetch({})
+    if control == 200:
+        return {
+            "status": "REFUSED", "ok": False, "user_agent": user_agent,
+            "http_with_user_agent": declared, "http_without_user_agent": control,
+            "detail": (f"Gallica refuse l'agent {user_agent!r} (HTTP {declared}) alors "
+                       "que le service répond. Signaler le blocage à la BnF plutôt que "
+                       "de changer d'identité."),
+        }
+    return {
+        "status": "SERVICE_UNAVAILABLE", "ok": False, "user_agent": user_agent,
+        "http_with_user_agent": declared, "http_without_user_agent": control,
+        "detail": "Le service ne répond avec aucun agent : ce n'est pas un problème d'identification.",
+    }
+
 
 class RobustHttpClient:
-    def __init__(self, *, timeout: float = 45.0, max_retries: int = 4, limiter: RateLimiter | None = None, transport: httpx.BaseTransport | None = None, sleeper=time.sleep, user_agent: str = "bnf-api-p0/0.1.3 (api.bnf.fr remediation)") -> None:
+    def __init__(self, *, timeout: float = 45.0, max_retries: int = 4, limiter: RateLimiter | None = None, transport: httpx.BaseTransport | None = None, sleeper=time.sleep, user_agent: str = DEFAULT_USER_AGENT) -> None:
         self.max_retries = max_retries
         self.limiter = limiter or RateLimiter()
         self.sleeper = sleeper
