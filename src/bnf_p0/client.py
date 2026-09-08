@@ -194,9 +194,12 @@ class GallicaClient:
         pages = last - start + 1
         if pages > 1:
             # `.texteBrut` livrait tout le document en un appel ; l'ALTO est
-            # paginé. Le coût en requêtes est donc proportionnel au nombre de
-            # vues, et l'appelant doit pouvoir l'anticiper.
-            log.info("Texte via ALTO : %d vue(s), soit autant de requêtes.", pages)
+            # paginé. Sur un livre de plusieurs centaines de vues, la cadence
+            # prudente appliquée à l'ALTO se traduit en dizaines de minutes :
+            # l'appelant doit l'apprendre avant, pas le découvrir en attendant.
+            minutes = pages * self.http.limiter.intervals.get("alto", 0.0) / 60.0
+            message = "Texte via ALTO : %d vue(s), soit autant de requêtes (~%.0f min)."
+            (log.warning if minutes >= 2 else log.info)(message, pages, minutes)
         return separator.join(self.page_text(ark, view) for view in range(start, last + 1))
 
     def pdf_from_iiif(self, ark: str, *, start_view: int = 1, nviews: int | None = None,

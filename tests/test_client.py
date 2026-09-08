@@ -64,3 +64,47 @@ def test_content_search_supports_start_result():
     with make_client(handler) as client:
         client.content_search("bpt6k5460422k", "hugo", start_result=11)
     assert "startResult=11" in seen[0]
+
+
+def test_text_warns_loudly_when_the_document_is_long(caplog):
+    """`.texteBrut` livrait un document en un appel ; l'ALTO est paginé. Sur un
+    livre, l'attente se compte en dizaines de minutes : il faut le dire avant."""
+    import logging
+    data = (FIX / "pagination.xml").read_bytes()   # 374 vues
+
+    def handler(request):
+        if "Pagination" in str(request.url):
+            return httpx.Response(200, content=data, request=request,
+                                  headers={"content-type": "application/xml"})
+        return httpx.Response(200, content=b"<alto/>", request=request,
+                              headers={"content-type": "application/xml"})
+
+    # Le limiteur garde sa cadence réelle pour que l'estimation soit vraie,
+    # mais n'attend pas : c'est le message qu'on teste, pas la temporisation.
+    http = RobustHttpClient(
+        transport=httpx.MockTransport(handler),
+        limiter=RateLimiter(intervals={"default": 0, "alto": 12.25},
+                            sleeper=lambda _: None),
+        sleeper=lambda _: None,
+    )
+    with caplog.at_level(logging.WARNING, logger="bnf_p0.client"):
+        with GallicaClient(http) as client:
+            client.text("bpt6kX", nviews=20)
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("min" in m for m in messages), messages
+    assert any("20 vue" in m for m in messages), messages
+
+
+def test_text_stays_quiet_for_a_single_page():
+    import logging
+    data = (FIX / "pagination.xml").read_bytes()
+
+    def handler(request):
+        if "Pagination" in str(request.url):
+            return httpx.Response(200, content=data, request=request,
+                                  headers={"content-type": "application/xml"})
+        return httpx.Response(200, content=b"<alto/>", request=request,
+                              headers={"content-type": "application/xml"})
+
+    with make_client(handler) as client:
+        assert client.text("bpt6kX", nviews=1) == ""
