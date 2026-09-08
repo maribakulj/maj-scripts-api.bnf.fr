@@ -67,3 +67,42 @@ def test_no_deprecated_gallicalabs_http_endpoint_in_proposed_pages():
     for path in DOCS.glob("*.md"):
         text = path.read_text(encoding="utf-8")
         assert "http://gallicalabs.bnf.fr" not in text
+
+
+def test_wrappers_page_tells_readers_to_identify_their_client():
+    text = read("wrappers-gallica.md")
+    assert "User-Agent" in text
+    assert "403" in text
+    # Le conseil doit être formulé par le geste correct, non par la liste des
+    # bibliothèques refusées, qui se lirait comme une recette de contournement.
+    for bibliotheque in ("python-requests", "python-urllib", "Python-urllib", "python-httpx", "curl/"):
+        assert bibliotheque not in text, bibliotheque
+
+
+def test_wrappers_page_separates_api_services_from_website_addresses():
+    text = read("wrappers-gallica.md")
+    assert "URL du site web" in text
+    assert ".texteBrut" in text and ".pdf" in text
+    assert "RequestDigitalElement" in text
+
+
+def test_pyllica_page_states_the_cost_of_the_alto_route():
+    text = read("pyllica.md")
+    assert "ALTO" in text
+    assert "une requête par vue" in text
+    assert "équipe API" in text          # besoin massif : passer par la BnF
+    assert "ISO-8859-1" in text          # le piège d'encodage est signalé
+
+
+def test_editorial_pack_flags_the_load_decision_for_the_api_team():
+    text = read("README.md")
+    assert "validé par elle avant publication" in text
+
+
+def test_audit_closure_reopens_rather_than_rewrites():
+    text = (ROOT / "docs" / "AUDIT_CLOSURE.md").read_text(encoding="utf-8")
+    assert text.count("Rouvert le 2026-09-08") >= 5
+    for nouvel_id in ("| 25 |", "| 26 |", "| 27 |", "| 28 |"):
+        assert nouvel_id in text
+    # Ce qui n'a pas pu être vérifié doit rester écrit.
+    assert "pas par une exécution réelle" in text
