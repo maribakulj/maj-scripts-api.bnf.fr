@@ -15,6 +15,7 @@ if _SRC.exists() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from bnf_p0 import GallicaClient, __version__
+from bnf_p0.http import DEFAULT_USER_AGENT, probe_user_agent
 
 try:
     from network_diagnose import diagnose
@@ -42,6 +43,18 @@ def main():
         report["status"] = "UNREACHABLE"
         report["reason"] = "gallica.bnf.fr n'est pas joignable depuis cet environnement; aucun verdict fonctionnel n'est possible."
     else:
+        # Gallica refuse par 403 les agents par défaut de plusieurs
+        # bibliothèques HTTP. Cette liste n'est pas documentée : si elle
+        # venait à couvrir l'agent de ce client, tous les appels ci-dessous
+        # échoueraient et le rapport accuserait les API Gallica.
+        access = probe_user_agent("https://gallica.bnf.fr/services/Pagination?ark=bpt6k5738219s")
+        report["access"] = access
+    if network.get("ok") and not report["access"]["ok"]:
+        report["ok"] = False
+        report["status"] = ("USER_AGENT_REFUSED" if report["access"]["status"] == "REFUSED"
+                            else "UNREACHABLE")
+        report["reason"] = report["access"]["detail"]
+    elif network.get("ok"):
         results = []
         with GallicaClient() as c:
             results.append(check("Pagination", lambda: {"views": c.view_count("bpt6k5738219s")}))
@@ -56,7 +69,9 @@ def main():
     text = json.dumps(report, ensure_ascii=False, indent=2)
     Path(args.output).write_text(text + "\n", encoding="utf-8")
     print(text)
-    return 0 if report["ok"] else (2 if report["status"] == "UNREACHABLE" else 1)
+    if report["ok"]:
+        return 0
+    return {"UNREACHABLE": 2, "USER_AGENT_REFUSED": 3}.get(report["status"], 1)
 
 
 if __name__ == "__main__":
