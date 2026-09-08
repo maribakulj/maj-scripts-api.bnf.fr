@@ -29,13 +29,45 @@ jobs:
           pip install -e . pytest
       - name: Validate editorial examples and invariants
         run: pytest -q tests/test_documentation_pack.py
+      - name: Diagnose public api.bnf.fr network access
+        run: python scripts/network_diagnose.py --host api.bnf.fr --output api-bnf-network.json
+        continue-on-error: true
       - name: Detect public api.bnf.fr documentation drift
-        run: python scripts/verify_public_documentation_contract.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/verify_public_documentation_contract.py
+          code=$?
+          set -e
+          case "$code" in
+            0)
+              echo "Contrat documentaire vérifié." ;;
+            2)
+              # api.bnf.fr injoignable : ce n'est pas une dérive documentaire.
+              # On le signale sans faire échouer la relecture, sinon le vrai
+              # signal se noie dans les faux positifs d'un site indisponible.
+              echo "::warning title=api.bnf.fr injoignable::Le contrat documentaire n'a pas pu être vérifié depuis ce runner. Aucune dérive constatée." ;;
+            *)
+              echo "::error title=Dérive documentaire::Une page publique d'api.bnf.fr ne correspond plus aux hypothèses du pack éditorial."
+              exit $code ;;
+          esac
+      - name: Publish documentation report in job summary
+        if: always()
+        shell: bash
+        run: |
+          echo '## Contrat documentaire api.bnf.fr' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f validation/public-documentation-report.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat validation/public-documentation-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload documentation drift report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: public-documentation-report-${{ github.run_id }}
-          path: validation/public-documentation-report.json
+          path: |
+            validation/public-documentation-report.json
+            api-bnf-network.json
           if-no-files-found: warn
           retention-days: 90

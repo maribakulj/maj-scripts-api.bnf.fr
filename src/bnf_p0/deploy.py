@@ -8,6 +8,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Les caches d'octets compilés ne font pas partie du cœur : ils dépendent de
+# la version de Python qui a servi à l'importer, ils n'ont aucun sens dans le
+# checkout d'un tiers, et les comparer ferait échouer un redéploiement légitime.
+VENDOR_IGNORE = ("__pycache__", "*.py[co]")
+
 STATE_FILE = ".bnf-p0-state.json"
 BACKUP_ROOT = ".bnf-p0-backup"
 REQUIREMENTS = "httpx>=0.27,<1\npypdf>=5,<7\n"
@@ -116,13 +121,25 @@ def _write_managed_file(root: Path, rel: str, data: bytes, backup_dir: Path, sta
     state["changes"].append({"path": rel, "kind": "file", "existed": existed})
 
 
+def _vendorable_files(src: Path):
+    """Fichiers du cœur à installer, caches d'octets compilés exclus."""
+    for path in sorted(src.rglob("*")):
+        if not path.is_file():
+            continue
+        if "__pycache__" in path.relative_to(src).parts:
+            continue
+        if path.suffix in {".pyc", ".pyo"}:
+            continue
+        yield path
+
+
 def _vendor_core(root: Path, package_root: Path, backup_dir: Path, state: dict[str, Any], force: bool) -> None:
     src = package_root / "src" / "bnf_p0"
     dst = root / "bnf_p0"
     if dst.exists():
         same = all(
             (dst / p.relative_to(src)).exists() and (dst / p.relative_to(src)).read_bytes() == p.read_bytes()
-            for p in src.rglob("*") if p.is_file()
+            for p in _vendorable_files(src)
         )
         if same:
             state["notes"].append("bnf_p0 déjà vendorisé à l'identique")
@@ -131,10 +148,10 @@ def _vendor_core(root: Path, package_root: Path, backup_dir: Path, state: dict[s
                 raise RuntimeError("Un dossier bnf_p0 existe déjà et diffère. Utiliser --force pour le sauvegarder/remplacer.")
             _backup_existing(root, "bnf_p0", backup_dir)
             shutil.rmtree(dst)
-            shutil.copytree(src, dst)
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns(*VENDOR_IGNORE))
             state["changes"].append({"path": "bnf_p0", "kind": "dir", "existed": True})
     else:
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, ignore=shutil.ignore_patterns(*VENDOR_IGNORE))
         state["changes"].append({"path": "bnf_p0", "kind": "dir", "existed": False})
 
     req = root / "requirements-p0.txt"
@@ -151,8 +168,15 @@ def apply_profile(target_root: str | Path, profile: dict[str, Any], package_root
         detail = ", ".join(f"{b.path}:{b.status}" for b in blockers)
         raise RuntimeError(f"Déploiement refusé: état amont inattendu ({detail}). Relancer avec --force seulement après revue.")
 
+    # L'horodatage est à la seconde : deux déploiements rapprochés sur le même
+    # checkout tomberaient sinon sur un FileExistsError brut. On suffixe plutôt
+    # que d'écraser, pour ne jamais perdre une sauvegarde antérieure.
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_dir = root / BACKUP_ROOT / timestamp
+    suffix = 1
+    while backup_dir.exists():
+        suffix += 1
+        backup_dir = root / BACKUP_ROOT / f"{timestamp}-{suffix}"
     backup_dir.mkdir(parents=True, exist_ok=False)
     state: dict[str, Any] = {
         "schema_version": 1,
